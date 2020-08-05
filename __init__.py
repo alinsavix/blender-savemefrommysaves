@@ -77,38 +77,45 @@ def nn(name: str, number: int) -> str:
     return "%s%d" % (name, number)
 
 
+def is_close(a, b, prec):
+    return f'{a:.{prec}f}' == f'{b:.{prec}f}'
+
+
 def fixsaves(thing1, thing2):
     # if not bpy.context.
     sep = os.path.sep
     d_sep = sep + sep
     age_threshold = 5
-    subdir = "saves"
+    subdir = "blend.saves"
     savefiles = 20
 
     preferences = bpy.context.preferences
     addon_prefs = preferences.addons[__name__].preferences
 
-    print(thing1)
-    print(thing2)
+    # print(thing1)
+    # print(thing2)
 
-    import pprint
-    print(addon_prefs.filepath)
-    print(addon_prefs.number)
-    print(addon_prefs.boolean)
+    # import pprint
+    # print(addon_prefs.filepath)
+    # print(addon_prefs.number)
+    # print(addon_prefs.boolean)
 
     f_path = bpy.data.filepath
-    print("trying to grab sequenced backup for %s" % (f_path))
+    if not os.path.exists(f_path):
+        print("no source file '%s' found, not saving file copy" % (f_path))
+        return
+
     # Kind of arbitrary -- if older than a few seconds old, we were possibly
     # saving a copy, so don't save a useless file?
-    save_mtime = os.path.getmtime(f_path)
-    curtime = int(time.time())
+    # save_mtime = os.path.getmtime(f_path)
+    # curtime = int(time.time())
 
-    if save_mtime < curtime - age_threshold:
-        print("save file %s too old (age %d > %d)" %
-              (f_path, curtime - save_mtime, age_threshold))
-    else:
-        print("save file %s is young enough (age %d < %d)" %
-              (f_path, curtime - save_mtime, age_threshold))
+    # if save_mtime < curtime - age_threshold:
+    #     print("save file %s too old (age %d > %d)" %
+    #           (f_path, curtime - save_mtime, age_threshold))
+    # else:
+    #     print("save file %s is young enough (age %d < %d)" %
+    #           (f_path, curtime - save_mtime, age_threshold))
 
     # save file (no path)
     s_file = os.path.basename(f_path)
@@ -119,6 +126,19 @@ def fixsaves(thing1, thing2):
 
     # Output directory and filename (minus numeric suffix)
     o_dirfile = os.path.join(o_dir, s_file)
+
+    # if we have a target file and a current file, see if they're
+    # the same (w/ timestamp)
+    if os.path.exists(nn(o_dirfile, 1)):
+        mtime_src = os.path.getmtime(f_path)
+        mtime_dest = os.path.getmtime(nn(o_dirfile, 1))
+
+        # print("%f ? %f" % (mtime_src, mtime_dest))
+
+        if is_close(mtime_src, mtime_dest, 3):
+            print(
+                "Not creating backup version for '%s', seems identical to most recent backup version" % (f_path))
+            return
 
     # make sure we have a save directory
     if not os.path.exists(o_dir):
@@ -137,14 +157,15 @@ def fixsaves(thing1, thing2):
 
     # And finally, copy our save file
     print("copying %s to %s" % (f_path, nn(o_dirfile, 1)))
-    shutil.copyfile(f_path, nn(o_dirfile, 1))
+    shutil.copy2(f_path, nn(o_dirfile, 1), follow_symlinks=False)
 
 
 # Registration
 def register():
     # bpy.utils.register_class(SaveMeFromMySaves_OT_Preferences)
     bpy.utils.register_class(SaveMeFromMySavesPreferences)
-    bpy.app.handlers.save_post.append(fixsaves)
+    if fixsaves not in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.append(fixsaves)
 
     print(__name__)
 
@@ -152,4 +173,5 @@ def register():
 def unregister():
     # bpy.utils.unregister_class(SaveMeFromMySaves_OT_Preferences)
     bpy.utils.unregister_class(SaveMeFromMySavesPreferences)
-    bpy.app.handlers.save_post.remove(fixsaves)
+    if fixsaves in bpy.app.handlers.save_pre:
+        bpy.app.handlers.save_pre.remove(fixsaves)
