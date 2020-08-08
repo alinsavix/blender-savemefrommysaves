@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+from bpy.app.handlers import persistent
 import os
 from pprint import pprint
 import shutil
@@ -81,7 +82,8 @@ def is_close(a, b, prec):
     return f'{a:.{prec}f}' == f'{b:.{prec}f}'
 
 
-def fixsaves(thing1, thing2):
+@persistent
+def fixsaves(dummy1, dummy2):
     # if not bpy.context.
     sep = os.path.sep
     d_sep = sep + sep
@@ -92,21 +94,16 @@ def fixsaves(thing1, thing2):
     preferences = bpy.context.preferences
     addon_prefs = preferences.addons[__name__].preferences
 
-    # print(thing1)
-    # print(thing2)
-
-    # import pprint
-    # print(addon_prefs.filepath)
-    # print(addon_prefs.number)
-    # print(addon_prefs.boolean)
-
     f_path = bpy.data.filepath
     if not os.path.exists(f_path):
         print("no source file '%s' found, not saving file copy" % (f_path))
         return
 
-    # Kind of arbitrary -- if older than a few seconds old, we were possibly
-    # saving a copy, so don't save a useless file?
+    # Kind of arbitrary -- if older than a few seconds old, we are
+    # possibly saving a copy, so don't save a useless file?
+    # Not needed, while doing pre-save, but keeping in case we want
+    # to switch back to post-save again
+
     # save_mtime = os.path.getmtime(f_path)
     # curtime = int(time.time())
 
@@ -146,7 +143,7 @@ def fixsaves(thing1, thing2):
 
     # check to see if the max # exists, so we can clean it out
     if os.path.exists(nn(o_dirfile, savefiles)):
-        # print("would remove %s" % (nn(o_dirfile, savefiles)))
+        print("removing oldest save file (%s)" % (nn(o_dirfile, savefiles)))
         os.remove(nn(o_dirfile, savefiles))
 
     # cycle through any other save filees and rename them
@@ -166,8 +163,6 @@ def register():
     bpy.utils.register_class(SaveMeFromMySavesPreferences)
     if fixsaves not in bpy.app.handlers.save_pre:
         bpy.app.handlers.save_pre.append(fixsaves)
-
-    print(__name__)
 
 
 def unregister():
