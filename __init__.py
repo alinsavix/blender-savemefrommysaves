@@ -75,7 +75,9 @@ class SaveMeFromMySavesPreferences(bpy.types.AddonPreferences):
 
 def nn(name: str, number: int) -> str:
     """create a filename given a path and a generation number"""
-    return "%s%d" % (name, number)
+
+    fn, ext = os.path.splitext(name)
+    return f"{fn}__{number}{ext}"
 
 
 def is_close(a, b, prec):
@@ -97,6 +99,11 @@ def fixsaves(dummy1, dummy2):
     f_path = bpy.data.filepath
     if not os.path.exists(f_path):
         print("no source file '%s' found, not saving file copy" % (f_path))
+        return
+
+    if f"{os.path.sep}{subdir}{os.path.sep}" in f_path:
+        print(
+            f"file '{f_path}'' is already in save directory '{subdir}'', not saving copy")
         return
 
     # Kind of arbitrary -- if older than a few seconds old, we are
